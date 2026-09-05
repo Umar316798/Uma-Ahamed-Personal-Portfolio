@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umar Ahamed — The Test Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f3efe6;
+    --floor:#e7e0d0;
+    --wall-a:#ded6c2;
+    --wall-b:#cfc6ad;
+    --ink:#2b2a28;
+    --ink-soft:#6b6558;
+    --card:#fffdf8;
+    --rust:#b5533f;
+    --blue:#3f6b8a;
+    --sage:#5f7a52;
+    --plum:#6d5a8a;
+    --line:#e3dccb;
+    --shadow: 0 18px 40px -12px rgba(43,42,40,.25);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+  }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; margin:0; }
+  ::selection{ background:var(--rust); color:#fff; }
+
+  /* ---------------- scene stage ---------------- */
+  #stage{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:120px 24px 60px; perspective:1400px;
+  }
+  #scene-wrap{
+    width:min(1100px, 100%);
+    transform-style:preserve-3d;
+    transition:transform .25s ease-out;
+    opacity:0; transform:scale(.94) translateY(14px);
+    animation:sceneIn 1s cubic-bezier(.2,.7,.3,1) .15s forwards;
+  }
+  @keyframes sceneIn{ to{ opacity:1; transform:scale(1) translateY(0); } }
+  #room{ width:100%; height:auto; display:block; overflow:visible; }
+
+  .hotspot{ cursor:pointer; }
+  .hotspot .ring{
+    fill:none; stroke:#fff; stroke-width:2; opacity:.85;
+  }
+  .hotspot .dot{ fill:#fff; }
+  .hotspot .label-bg{ fill:var(--ink); }
+  .hotspot .label-txt{
+    fill:#fff; font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+  }
+  .hotspot .label{ opacity:0; transition:opacity .18s ease; }
+  .hotspot:hover .label{ opacity:1; }
+  /* the outer marker-pos group only ever carries a static SVG transform (its position) —
+     all hover motion happens on the nested .marker-lift group, which starts with no
+     baseline transform attribute, so CSS transform can safely take it over on hover
+     without the two fighting (that fight was the "jumping" glitch). */
+  .marker-lift{
+    transition:transform .2s ease;
+    transform-box:fill-box; transform-origin:center;
+    animation:idleBob 2.6s ease-in-out infinite;
+  }
+  .hotspot:hover .marker-lift{ transform:translateY(-4px) scale(1.08); animation-play-state:paused; }
+  @keyframes idleBob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-2.5px); } }
+  .hotspot .zone{
+    fill:rgba(255,255,255,.16); stroke:#fff; stroke-width:1.4; stroke-dasharray:4 3;
+    opacity:0; transition:opacity .2s ease; pointer-events:none;
+  }
+  .hotspot:hover .zone{ opacity:1; }
+  .scope-trace{ animation:scopeFlow 1s linear infinite; }
+  @keyframes scopeFlow{ to{ stroke-dashoffset:-20; } }
+  .blink-led{ animation:ledBlink 1.6s ease-in-out infinite; }
+  @keyframes ledBlink{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+  .smoke{ animation:smokeDrift 3.2s ease-in infinite; transform-box:fill-box; transform-origin:bottom center; }
+  @keyframes smokeDrift{
+    0%{ transform:translateY(0) scale(1); opacity:.55; }
+    100%{ transform:translateY(-26px) scale(1.6); opacity:0; }
+  }
+  .lamp-flicker{ animation:lampFlicker 3.5s ease-in-out infinite; }
+  @keyframes lampFlicker{ 0%,100%{ opacity:1; } 48%{ opacity:1; } 50%{ opacity:.82; } 52%{ opacity:1; } }
+
+  /* ---------------- nav card ---------------- */
+  #nav-card{
+    position:fixed; top:22px; left:22px; z-index:20;
+    background:var(--card); border-radius:16px; box-shadow:var(--shadow);
+    padding:16px 18px; max-width:300px;
+    border:1px solid var(--line);
+  }
+  #nav-card .row{ display:flex; gap:12px; align-items:flex-start; }
+  #nav-card .avatar{
+    width:44px; height:44px; border-radius:12px; flex:none;
+    background:linear-gradient(150deg, var(--rust), var(--blue));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px;
+  }
+  #nav-card h1{ font-size:16px; }
+  #nav-card .tag{ font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.4; }
+  #nav-card .nav-btns{ display:flex; gap:6px; flex-wrap:wrap; margin-top:14px; }
+  #nav-card button, #nav-card a.btn{
+    font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500;
+    border:1px solid var(--line); background:var(--cream); color:var(--ink);
+    padding:6px 10px; border-radius:8px; cursor:pointer; text-decoration:none;
+    display:inline-flex; align-items:center; gap:5px; line-height:1;
+  }
+  #nav-card button svg, #nav-card a.btn svg{ flex:none; opacity:.75; }
+  #nav-card button:hover, #nav-card a.btn:hover{ border-color:var(--ink); }
+  @media (max-width:640px){ #nav-card{ max-width:240px; padding:12px 14px; } }
+
+  #hint{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    font-size:12.5px; color:var(--ink-soft); background:var(--card);
+    border:1px solid var(--line); padding:8px 14px; border-radius:999px;
+    box-shadow:var(--shadow); z-index:15; display:flex; gap:8px; align-items:center;
+  }
+  #hint .pip{ width:6px; height:6px; border-radius:50%; background:var(--rust); animation:pulsePip 1.6s infinite; }
+  @keyframes pulsePip{ 0%,100%{opacity:.4;} 50%{opacity:1;} }
+
+  /* ---------------- modal ---------------- */
+  #scrim{
+    position:fixed; inset:0; background:rgba(43,42,40,.45);
+    opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:50;
+    backdrop-filter:blur(2px);
+  }
+  #scrim.open{ opacity:1; pointer-events:auto; }
+  #modal{
+    position:fixed; z-index:51; top:50%; left:50%;
+    transform:translate(-50%,-46%) scale(.96); opacity:0; pointer-events:none;
+    transition:all .28s cubic-bezier(.2,.7,.3,1);
+    width:min(560px, 92vw); max-height:82vh; overflow-y:auto;
+    background:var(--card); border-radius:18px; box-shadow:var(--shadow);
+  }
+  #modal.open{ transform:translate(-50%,-50%) scale(1); opacity:1; pointer-events:auto; }
+  #modal .m-head{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:24px 26px 6px; gap:16px;
+  }
+  #modal .m-eyebrow{ font-size:11px; color:var(--rust); font-weight:600; letter-spacing:.06em; margin-bottom:4px; }
+  #modal h2{ font-size:22px; }
+  #modal .m-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:4px; }
+  #modal .m-close{
+    border:none; background:var(--cream); width:30px; height:30px; border-radius:50%;
+    font-size:16px; cursor:pointer; flex:none; color:var(--ink);
+  }
+  #modal .m-body{ padding:14px 26px 26px; font-size:14px; line-height:1.7; }
+  #modal .m-body ul{ margin:0 0 16px; padding-left:18px; }
+  #modal .m-body li{ margin-bottom:8px; }
+  #modal .m-body li::marker{ color:var(--rust); }
+  #modal .m-body h4{ font-size:13px; margin:18px 0 6px; color:var(--ink); }
+  #modal .m-body h4:first-child{ margin-top:0; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
+  .skill-chip{
+    font-size:11.5px; padding:5px 10px; border-radius:7px; background:var(--cream);
+    border:1px solid var(--line); color:var(--ink);
+  }
+  .m-badge{
+    display:inline-block; font-size:10.5px; border:1px solid var(--rust); color:var(--rust);
+    padding:2px 8px; border-radius:999px; margin-left:8px; vertical-align:middle;
+  }
+
+  /* terminal inside contact modal */
+  .term{ background:#161513; border-radius:12px; overflow:hidden; margin-top:6px; }
+  .term-bar{ display:flex; gap:6px; padding:9px 12px; background:#211f1c; }
+  .term-bar i{ width:9px; height:9px; border-radius:50%; background:#3a372f; }
+  #term-log{ padding:14px 14px 0; height:170px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.7; color:#9fe0a8; }
+  #term-log .cmd::before{ content:'guest@umar-ee:~$ '; color:#7cc7e0; }
+  #term-log .out{ color:#c9c4b6; }
+  #term-log a{ color:#e8a06a; }
+  .term-input-row{ display:flex; align-items:center; gap:8px; padding:10px 14px 14px; }
+  .term-input-row .prompt{ color:#7cc7e0; font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
+  #term-input{
+    flex:1; background:transparent; border:none; outline:none; color:#f2efe6;
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+  }
+  .contact-hints{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .contact-hints button{
+    font-family:'Inter',sans-serif; font-size:11.5px; padding:6px 10px; border-radius:8px;
+    background:var(--cream); border:1px solid var(--line); cursor:pointer; color:var(--ink);
+  }
+
+  footer{ text-align:center; padding:0 20px 40px; color:var(--ink-soft); font-size:11.5px; }
+
+  /* ---------------- welcome intro ---------------- */
+  #boot-intro{
+    position:fixed; inset:0; z-index:200; background:#161513; color:#f2efe6;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    text-align:center; padding:24px; cursor:pointer; transition:opacity .6s ease;
+  }
+  #boot-intro.hide{ opacity:0; pointer-events:none; }
+  #boot-intro h2{
+    font-family:'Space Grotesk', sans-serif; font-weight:600;
+    font-size:clamp(24px,5vw,42px); margin:0; min-height:1.2em;
+  }
+  #boot-intro .cursor{
+    display:inline-block; width:3px; height:0.95em; background:#f2efe6;
+    vertical-align:-0.12em; margin-left:2px; animation:caretBlink .9s step-end infinite;
+  }
+  @keyframes caretBlink{ 50%{ opacity:0; } }
+  #boot-intro .sub{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; color:#9a9385;
+    margin-top:10px; opacity:0; transition:opacity .4s ease;
+  }
+  #boot-intro .sub.show{ opacity:1; }
+  #boot-intro .tap-hint{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6f6852;
+    margin-top:30px; opacity:0; transition:opacity .4s ease;
+  }
+  #boot-intro .tap-hint.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="boot-intro">
+  <h2 id="boot-line">&nbsp;</h2>
+  <div class="sub" id="boot-sub">Electrical engineering · San Jose State University</div>
+  <div class="tap-hint" id="boot-tap">tap anywhere to step in →</div>
+</div>
+
+<div id="nav-card">
+  <div class="row">
+    <div class="avatar">UA</div>
+    <div>
+      <h1>Umar Ahamed</h1>
+      <div class="tag">Electrical engineering student building circuits, cores &amp; controllers at SJSU.</div>
+    </div>
+  </div>
+  <div class="nav-btns">
+    <button data-action="home">Home</button>
+    <a class="btn" id="resume-link" href="#" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.5v8.5M8 10l-3-3M8 10l3-3"/><path d="M2.5 11.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2"/></svg>
+      Résumé
+    </a>
+    <a class="btn" href="https://www.linkedin.com/in/umar-ahamed-a94382259/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M3.5 5.5h2.2V13H3.5zM4.6 2c.75 0 1.3.55 1.3 1.25S5.35 4.5 4.6 4.5 3.3 3.95 3.3 3.25 3.85 2 4.6 2zM7.6 5.5h2.1v1.03h.03c.3-.55 1.02-1.13 2.1-1.13 2.25 0 2.67 1.4 2.67 3.22V13h-2.2V9.05c0-.94-.02-2.15-1.35-2.15-1.35 0-1.56 1-1.56 2.08V13H7.6z"/></svg>
+      LinkedIn
+    </a>
+    <button data-action="open" data-key="contact">
+      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12v8H6.5L3 14.5V11.5H2z"/></svg>
+      Say hi
+    </button>
+  </div>
+</div>
+
+<div id="hint"><span class="pip"></span> Click around the test bench to explore</div>
+
+<div id="stage">
+  <div id="scene-wrap">
+    <svg id="room" viewBox="-460 -300 1140 900" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+
+<footer>A little electrical engineering test bench, built from one résumé · San Jose, CA</footer>
+
+<div id="scrim"></div>
+<div id="modal">
+  <div class="m-head">
+    <div>
+      <div class="m-eyebrow" id="m-eyebrow"></div>
+      <h2 id="m-title"></h2>
+      <div class="m-sub" id="m-sub"></div>
+    </div>
+    <button class="m-close" id="m-close">✕</button>
+  </div>
+  <div class="m-body" id="m-body"></div>
+</div>
+
+<script>
+/* ===================== welcome intro ===================== */
+(function bootIntro(){
+  const lineEl = document.getElementById('boot-line');
+  const sub = document.getElementById('boot-sub');
+  const tap = document.getElementById('boot-tap');
+  const overlay = document.getElementById('boot-intro');
+  const msg = "Welcome to my test bench.";
+  let i = 0, dismissed = false;
+  function type(){
+    if(i <= msg.length){
+      lineEl.innerHTML = msg.slice(0,i) + '<span class="cursor"></span>';
+      i++;
+      setTimeout(type, 45);
+    } else {
+      sub.classList.add('show');
+      setTimeout(()=> tap.classList.add('show'), 400);
+      setTimeout(dismiss, 2400);
+    }
+  }
+  function dismiss(){
+    if(dismissed) return;
+    dismissed = true;
+    overlay.classList.add('hide');
+    setTimeout(()=> overlay.remove(), 650);
+  }
+  overlay.addEventListener('click', dismiss);
+  type();
+})();
+
+/* ===================== isometric renderer ===================== */
+/* NOTE: this is a short placeholder PDF standing in for your real résumé data URI —
+   swap RESUME_DATA_URI back to your full base64 string before you deploy this. */
+const RESUME_DATA_URI = "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA2MTIgNzkyXT4+CmVuZG9iagp4cmVmCjAgNAowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCnRyYWlsZXI8PC9TaXplIDQvUm9vdCAxIDAgUj4+CnN0YXJ0eHJlZgoxOTAKJSVFT0Y=";
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('room');
+const TW = 120, TH = 60, ZH = 80; // tile width, tile height, unit height
+
+const defs = document.createElementNS(NS,'defs');
+defs.innerHTML = `
+  <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#ffd98a" stop-opacity="0.55"/>
+    <stop offset="100%" stop-color="#ffd98a" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="lampCore" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#fff4d6" stop-opacity="1"/>
+    <stop offset="100%" stop-color="#ffcf6b" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="windowGlow" cx="50%" cy="40%" r="60%">
+    <stop offset="0%" stop-color="#bfe3d0" stop-opacity="0.5"/>
+    <stop offset="100%" stop-color="#bfe3d0" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="gardenSky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#dcefe6"/>
+    <stop offset="100%" stop-color="#eef6ee"/>
+  </linearGradient>
+  <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="2.4"/>
+  </filter>
+`;
+svg.appendChild(defs);
+
+function proj(gx, gy, gz){
+  return {
+    x: (gx - gy) * (TW/2),
+    y: (gx + gy) * (TH/2) - gz * ZH
+  };
+}
+function pts(arr){ return arr.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '); }
+function shade(hex, amt){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  r = Math.min(255,Math.max(0, Math.round(r + 255*amt)));
+  g = Math.min(255,Math.max(0, Math.round(g + 255*amt)));
+  b = Math.min(255,Math.max(0, Math.round(b + 255*amt)));
+  return '#' + ((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1);
+}
+let curBBox = null; // when set, poly()/line() calls extend it so callers can grab a prop's screen-space bounds
+function extend(points){
+  if(!curBBox) return;
+  points.forEach(p=>{
+    curBBox.minX = Math.min(curBBox.minX, p.x); curBBox.maxX = Math.max(curBBox.maxX, p.x);
+    curBBox.minY = Math.min(curBBox.minY, p.y); curBBox.maxY = Math.max(curBBox.maxY, p.y);
+  });
+}
+function poly(points, fill, cls){
+  extend(points);
+  const p = document.createElementNS(NS,'polygon');
+  p.setAttribute('points', pts(points));
+  p.setAttribute('fill', fill);
+  if(cls) p.setAttribute('class', cls);
+  svg.appendChild(p);
+  return p;
+}
+function line(p1,p2,stroke,w,opacity){
+  extend([p1,p2]);
+  const l = document.createElementNS(NS,'line');
+  l.setAttribute('x1',p1.x); l.setAttribute('y1',p1.y);
+  l.setAttribute('x2',p2.x); l.setAttribute('y2',p2.y);
+  l.setAttribute('stroke',stroke); l.setAttribute('stroke-width',w||1.5);
+  l.setAttribute('opacity', opacity==null?1:opacity);
+  l.setAttribute('stroke-linecap','round');
+  svg.appendChild(l);
+  return l;
+}
+
+// draws a box with footprint (w,d) at grid (gx,gy), base elevation baseZ, height h
+function cube(gx,gy,w,d,h,baseZ,base){
+  baseZ = baseZ||0;
+  const top = shade(base, 0.14);
+  const rightF = shade(base, -0.06);
+  const leftF = shade(base, -0.26);
+  // top face
+  poly([proj(gx,gy,baseZ+h), proj(gx+w,gy,baseZ+h), proj(gx+w,gy+d,baseZ+h), proj(gx,gy+d,baseZ+h)], top);
+  // right face (x+w edge)
+  poly([proj(gx+w,gy,baseZ+h), proj(gx+w,gy+d,baseZ+h), proj(gx+w,gy+d,baseZ), proj(gx+w,gy,baseZ)], rightF);
+  // left/front face (y+d edge)
+  poly([proj(gx,gy+d,baseZ+h), proj(gx+w,gy+d,baseZ+h), proj(gx+w,gy+d,baseZ), proj(gx,gy+d,baseZ)], leftF);
+  return proj(gx+w/2, gy+d/2, baseZ+h); // top-center point
+}
+
+// a <g> whose local (u,v) coords — u along gx, v downward from the top — map onto the x-wall
+// at gy, spanning gx0..gx0+w and gz1-h..gz1, matching the room's iso skew exactly. Anything
+// drawn inside using plain world-unit-scale coordinates will sit flush on that wall, correctly
+// sheared, instead of floating as an unsheared rectangle.
+function wallXPanel(gx0, gy, gz1){
+  const p = proj(gx0, gy, gz1);
+  const g = document.createElementNS(NS,'g');
+  g.setAttribute('transform', `matrix(${TW/2},${TH/2},0,${ZH},${p.x},${p.y})`);
+  svg.appendChild(g);
+  return g;
+}
+
+/* ---------- room shell ---------- */
+const GX=10, GY=6.4, WALLH=3.6;
+poly([proj(0,0,0), proj(GX,0,0), proj(GX,GY,0), proj(0,GY,0)], '#e7e0d0'); // floor
+// floor grid lines
+for(let i=0;i<=GX;i++) line(proj(i,0,0), proj(i,GY,0), 'rgba(43,42,40,0.06)', 1);
+for(let j=0;j<=GY;j++) line(proj(0,j,0), proj(GX,j,0), 'rgba(43,42,40,0.06)', 1);
+// back walls
+poly([proj(0,0,0), proj(GX,0,0), proj(GX,0,WALLH), proj(0,0,WALLH)], '#ded6c2'); // wall facing lower-right (x axis)
+poly([proj(0,0,0), proj(0,GY,0), proj(0,GY,WALLH), proj(0,0,WALLH)], '#cfc6ad'); // wall facing lower-left (y axis)
+// baseboard accent
+line(proj(0,0,0.02), proj(GX,0,0.02), '#c8bfa8', 3);
+line(proj(0,0,0.02), proj(0,GY,0.02), '#bcb193', 3);
+// window on the y-wall — a soft lofi garden view, flush-mounted with a proper frame
+const WIN_Y0 = GY*0.62, WIN_Y1 = GY*0.62+1.3, WIN_Z0 = 1.35, WIN_Z1 = 2.45;
+// outer wood frame, sitting a touch proud of the wall so the window reads as an object, not a floating decal
+poly([proj(0,WIN_Y0-0.07,WIN_Z1+0.07), proj(0,WIN_Y1+0.07,WIN_Z1+0.07), proj(0,WIN_Y1+0.07,WIN_Z0-0.07), proj(0,WIN_Y0-0.07,WIN_Z0-0.07)], '#9a8564');
+// glass pane — varies gy & gz only (stays flush on the wall, unlike a pane that drifts off it)
+poly([proj(0,WIN_Y0,WIN_Z1), proj(0,WIN_Y1,WIN_Z1), proj(0,WIN_Y1,WIN_Z0), proj(0,WIN_Y0,WIN_Z0)], 'url(#gardenSky)');
+(function gardenView(){
+  const base = proj(0,(WIN_Y0+WIN_Y1)/2,WIN_Z0);
+  const g = document.createElementNS(NS,'g');
+  g.setAttribute('filter','url(#softBlur)');
+  g.setAttribute('opacity','0.85');
+  const bush1 = document.createElementNS(NS,'ellipse');
+  bush1.setAttribute('cx', base.x-14); bush1.setAttribute('cy', base.y+18); bush1.setAttribute('rx','16'); bush1.setAttribute('ry','10');
+  bush1.setAttribute('fill','#8fb894');
+  const bush2 = document.createElementNS(NS,'ellipse');
+  bush2.setAttribute('cx', base.x+16); bush2.setAttribute('cy', base.y+16); bush2.setAttribute('rx','14'); bush2.setAttribute('ry','9');
+  bush2.setAttribute('fill','#a3c79f');
+  const sunHalo = document.createElementNS(NS,'circle');
+  sunHalo.setAttribute('cx', base.x+10); sunHalo.setAttribute('cy', base.y-28); sunHalo.setAttribute('r','20');
+  sunHalo.setAttribute('fill','#ffd98a'); sunHalo.setAttribute('opacity','.45');
+  const sun = document.createElementNS(NS,'circle');
+  sun.setAttribute('cx', base.x+10); sun.setAttribute('cy', base.y-28); sun.setAttribute('r','11');
+  sun.setAttribute('fill','#ffe1a3');
+  g.appendChild(bush1); g.appendChild(bush2); g.appendChild(sunHalo); g.appendChild(sun);
+  svg.appendChild(g);
+  // a few soft sun rays, drawn crisp (outside the blur group) so they read clearly through the glass
+  const rays = document.createElementNS(NS,'g');
+  rays.setAttribute('opacity','.55'); rays.setAttribute('stroke','#f4c96b');
+  rays.setAttribute('stroke-width','1.6'); rays.setAttribute('stroke-linecap','round');
+  const rcx = base.x+10, rcy = base.y-28;
+  [[-1,-1.3],[0,-1.6],[1,-1.3]].forEach(([dx,dy])=>{
+    const x1 = rcx+dx*13, y1 = rcy+dy*13, x2 = rcx+dx*20, y2 = rcy+dy*20;
+    const r = document.createElementNS(NS,'line');
+    r.setAttribute('x1',x1); r.setAttribute('y1',y1); r.setAttribute('x2',x2); r.setAttribute('y2',y2);
+    rays.appendChild(r);
+  });
+  svg.appendChild(rays);
+})();
+// mullions, drawn on top of the glass so the cross sits right on the pane
+line(proj(0,(WIN_Y0+WIN_Y1)/2,WIN_Z0), proj(0,(WIN_Y0+WIN_Y1)/2,WIN_Z1), '#8ea89f', 3);
+line(proj(0,WIN_Y0,(WIN_Z0+WIN_Z1)/2), proj(0,WIN_Y1,(WIN_Z0+WIN_Z1)/2), '#8ea89f', 3);
+// inner sill shadow line, so the frame reads as sitting on the wall rather than hovering
+line(proj(0,WIN_Y0-0.02,WIN_Z0-0.02), proj(0,WIN_Y1+0.02,WIN_Z0-0.02), 'rgba(43,42,40,.18)', 2);
+// ambient light washes
+(function ambientLight(){
+  const win = proj(0,(WIN_Y0+WIN_Y1)/2,(WIN_Z0+WIN_Z1)/2);
+  const winGlow = document.createElementNS(NS,'circle');
+  winGlow.setAttribute('cx',win.x); winGlow.setAttribute('cy',win.y); winGlow.setAttribute('r','170');
+  winGlow.setAttribute('fill','url(#windowGlow)');
+  svg.appendChild(winGlow);
+})();
+// framed schematic art on x-wall
+poly([proj(7.6,0,2.2), proj(9.0,0,2.2), proj(9.0,0,3.2), proj(7.6,0,3.2)], '#f4efe2');
+line(proj(7.85,0,2.4), proj(8.75,0,2.4), '#b5533f', 2);
+line(proj(7.85,0,2.7), proj(8.4,0,2.7), '#3f6b8a', 2);
+line(proj(7.85,0,3.0), proj(8.75,0,3.0), '#b5533f', 2);
+
+/* ---------- hotspot helper ---------- */
+function hotspot(p, key, label, color, bbox){
+  const g = document.createElementNS(NS,'g');
+  g.setAttribute('class','hotspot');
+  g.setAttribute('data-key', key);
+
+  // selection zone — a plain axis-aligned rect over the object's footprint, like a
+  // game hitbox highlight. No transform attribute involved, so hover is glitch-free.
+  if(bbox){
+    const pad = 10;
+    const zone = document.createElementNS(NS,'rect');
+    zone.setAttribute('x', bbox.minX - pad);
+    zone.setAttribute('y', bbox.minY - pad);
+    zone.setAttribute('width', (bbox.maxX - bbox.minX) + pad*2);
+    zone.setAttribute('height', (bbox.maxY - bbox.minY) + pad*2);
+    zone.setAttribute('rx', 10);
+    zone.setAttribute('class','zone');
+    g.appendChild(zone);
+  }
+
+  // marker-pos: static position only, set once via SVG transform attribute — never touched by CSS.
+  const markerPos = document.createElementNS(NS,'g');
+  markerPos.setAttribute('transform', `translate(${p.x},${p.y-16})`);
+  // marker-lift: no transform attribute at all — CSS owns its transform exclusively (hover + idle bob).
+  const mk = document.createElementNS(NS,'g');
+  mk.setAttribute('class','marker-lift');
+  const ring = document.createElementNS(NS,'circle');
+  ring.setAttribute('r','11'); ring.setAttribute('class','ring');
+  const pulse = document.createElementNS(NS,'circle');
+  pulse.setAttribute('r','11'); pulse.setAttribute('fill','none');
+  pulse.setAttribute('stroke', color); pulse.setAttribute('stroke-width','2');
+  const anim1 = document.createElementNS(NS,'animate');
+  anim1.setAttribute('attributeName','r'); anim1.setAttribute('values','9;18'); anim1.setAttribute('dur','1.8s'); anim1.setAttribute('repeatCount','indefinite');
+  const anim2 = document.createElementNS(NS,'animate');
+  anim2.setAttribute('attributeName','opacity'); anim2.setAttribute('values','.8;0'); anim2.setAttribute('dur','1.8s'); anim2.setAttribute('repeatCount','indefinite');
+  pulse.appendChild(anim1); pulse.appendChild(anim2);
+  const dot = document.createElementNS(NS,'circle');
+  dot.setAttribute('r','5'); dot.setAttribute('class','dot'); dot.setAttribute('fill', color);
+  mk.appendChild(pulse); mk.appendChild(ring); mk.appendChild(dot);
+  markerPos.appendChild(mk);
+  g.appendChild(markerPos);
+
+  const lbl = document.createElementNS(NS,'g');
+  lbl.setAttribute('class','label');
+  const approxW = Math.max(70, label.length*7.5+26);
+  const bg = document.createElementNS(NS,'rect');
+  bg.setAttribute('x', p.x - approxW/2); bg.setAttribute('y', p.y-16-40);
+  bg.setAttribute('width', approxW); bg.setAttribute('height', 24);
+  bg.setAttribute('rx', 7); bg.setAttribute('class','label-bg');
+  const txt = document.createElementNS(NS,'text');
+  txt.setAttribute('x', p.x); txt.setAttribute('y', p.y-16-24);
+  txt.setAttribute('text-anchor','middle'); txt.setAttribute('class','label-txt');
+  txt.textContent = label;
+  lbl.appendChild(bg); lbl.appendChild(txt);
+  g.appendChild(lbl);
+  g.addEventListener('click', ()=> openModal(key));
+  svg.appendChild(g);
+}
+
+/* ---------- props (drawn back-to-front) ---------- */
+const props = [];
+// whiteboard (education) — thin box mounted on the x-wall, with a sketched diagram
+props.push({key:'education', label:'Coursework & Blueprints', color:'#f4efe2', dot:'#3f6b8a',
+  draw:()=>{
+    const top = cube(1.0,0.12,2.1,0.12,1.5,1.5,'#f4efe2');
+    line(proj(1.2,0.13,2.15), proj(1.9,0.13,2.15), '#3f6b8a', 2);
+    line(proj(1.2,0.13,1.95), proj(1.6,0.13,1.95), '#b5533f', 2);
+    line(proj(1.2,0.13,1.75), proj(2.0,0.13,1.75), '#3f6b8a', 2);
+    return top;
+  }});
+// hobbies pinboard (off the clock) — a corkboard on the x-wall with pinned photos + a sticky note.
+// Everything is drawn inside wallXPanel() in plain world-unit coordinates, so it's automatically
+// sheared to match the wall instead of floating over it as flat, unskewed pixel rectangles.
+const HB_X = 3.9, HB_W = 1.65, HB_Z1 = 3.05, HB_H = 1.4; // board box: gx HB_X..HB_X+HB_W, top z HB_Z1, height HB_H
+props.push({key:'hobbies', label:'Off the Clock', color:'#c98a4b', dot:'#c98a4b',
+  draw:()=>{
+    const top = cube(HB_X,0.12,HB_W,0.12,HB_H,HB_Z1-HB_H,'#d8c9a8'); // cork body + hotspot bbox
+    const g = wallXPanel(HB_X, 0.13, HB_Z1); // local (u,v): u = gx offset, v = distance down from the top
+    function el(tag, attrs, parent){
+      const n = document.createElementNS(NS, tag);
+      for(const k in attrs) n.setAttribute(k, attrs[k]);
+      (parent||g).appendChild(n);
+      return n;
+    }
+    // a few stray pins scattered on the cork for texture
+    el('circle', {cx:0.14, cy:0.16, r:0.028, fill:'#9a9385'});
+    el('circle', {cx:1.52, cy:1.24, r:0.028, fill:'#9a9385'});
+
+    function photoCard(cx, cy, w, h, tilt, icon){
+      const card = el('g', {transform:`rotate(${tilt} ${cx} ${cy})`});
+      el('rect', {x:cx-w/2, y:cy-h/2, width:w, height:h, rx:0.02, fill:'#fffdf8', stroke:'#c9c2b0', 'stroke-width':0.014}, card);
+      const pad = 0.045;
+      const bg = icon==='hike' ? '#dcefe6' : icon==='soccer' ? '#eef6ee' : '#efe7da';
+      el('rect', {x:cx-w/2+pad, y:cy-h/2+pad, width:w-pad*2, height:h-pad*2.6, fill:bg}, card);
+      if(icon==='hike'){
+        el('path', {d:`M ${cx-w/2+0.05} ${cy+h*0.12} l 0.09 -0.16 l 0.06 0.07 l 0.08 -0.13 l 0.1 0.22 Z`, fill:'#5f7a52'}, card);
+        el('circle', {cx:cx+w*0.22, cy:cy-h*0.18, r:0.045, fill:'#e8c565'}, card);
+      } else if(icon==='soccer'){
+        el('circle', {cx:cx, cy:cy-0.02, r:h*0.32, fill:'#fffdf8', stroke:'#2b2a28', 'stroke-width':0.016}, card);
+        el('polygon', {points:`${cx},${cy-h*0.22} ${cx-h*0.13},${cy-h*0.06} ${cx-h*0.08},${cy+h*0.12} ${cx+h*0.08},${cy+h*0.12} ${cx+h*0.13},${cy-h*0.06}`, fill:'#2b2a28'}, card);
+      } else {
+        el('line', {x1:cx-w*0.28, y1:cy, x2:cx+w*0.28, y2:cy, stroke:'#2b2a28', 'stroke-width':0.05, 'stroke-linecap':'round'}, card);
+        [-1,1].forEach(s=>{
+          el('rect', {x:cx+s*w*0.28-0.045, y:cy-h*0.24, width:0.09, height:h*0.48, rx:0.02, fill:'#b5533f'}, card);
+        });
+      }
+      // pin at the top of the card
+      el('circle', {cx, cy:cy-h/2, r:0.045, fill:'#b5533f'});
+    }
+    photoCard(0.26, 0.60, 0.48, 0.42,  4, 'hike');
+    photoCard(0.825,0.55, 0.48, 0.42, -5, 'soccer');
+    photoCard(1.39, 0.62, 0.48, 0.42,  3, 'gym');
+
+    // a hand-scrawled sticky note tucked along the bottom
+    const note = el('g', {transform:'rotate(-6 0.825 1.1)'});
+    el('rect', {x:0.525, y:0.9, width:0.6, height:0.4, fill:'#f4dd8e', stroke:'#d8c467', 'stroke-width':0.01}, note);
+    [0,1,2].forEach(i=>{
+      el('line', {x1:0.605, y1:0.98+i*0.09, x2:0.605+ (i===1?0.32:0.4), y2:0.98+i*0.09, stroke:'#8a7a3f', 'stroke-width':0.018, 'stroke-linecap':'round'}, note);
+    });
+    el('circle', {cx:0.825, cy:0.9, r:0.045, fill:'#b5533f'});
+    return top;
+  }});
+// storage lockers (decorative) — a bank of four, all closed, sitting right of the
+// window on the same wall, with a bench pulled out in front spanning the row.
+function drawLockers(){
+  const LX = 0.15;                 // fixed: how far the lockers sit off the window wall
+  const LW = 0.55;                 // how far each locker sticks into the room
+  const LD = 0.5;                  // width along the wall per locker
+  const GAP = 0.08;
+  const LH = 1.65;
+  const startGy = 0.15;            // right of the window on the other side — toward the corner, closer to the blueprint/coursework wall
+  const bodyShades = ['#c9c2b0','#bfb7a2','#c9c2b0','#bfb7a2'];
+  const noteColors = ['#f4dd8e','#dcefe6','#eef6ee','#efe7da'];
+  const noteTilts = [-6, 5, -4, 6];
+  const stickerColors = ['#b5533f','#3f6b8a','#5f7a52','#6d5a8a'];
+
+  for(let i=0;i<4;i++){
+    const gx = LX;
+    const gy = startGy + i*(LD+GAP);
+    cube(gx, gy, LW, LD, LH, 0, bodyShades[i]);
+
+    const doorTop = proj(gx+LW*0.5, gy+0.01, LH-0.08);
+    // louvered vent lines
+    for(let k=0;k<4;k++){
+      line({x:doorTop.x-11,y:doorTop.y+5+k*3.4}, {x:doorTop.x+11,y:doorTop.y+5+k*3.4}, '#a89f8c', 1.2);
+    }
+    // door seam
+    line(proj(gx+LW*0.5, gy+0.01, 0.15), proj(gx+LW*0.5, gy+0.01, LH-0.55), '#a89f8c', 1.1);
+    // lock + LED
+    const lockP = proj(gx+LW*0.72, gy+0.01, LH*0.5);
+    const lockBody = document.createElementNS(NS,'rect');
+    lockBody.setAttribute('x', lockP.x-3.5); lockBody.setAttribute('y', lockP.y-4.5);
+    lockBody.setAttribute('width','7'); lockBody.setAttribute('height','9'); lockBody.setAttribute('rx','1.3');
+    lockBody.setAttribute('fill','#2b2a28');
+    svg.appendChild(lockBody);
+    const lockLed = document.createElementNS(NS,'circle');
+    lockLed.setAttribute('cx', lockP.x); lockLed.setAttribute('cy', lockP.y-1.3); lockLed.setAttribute('r','1.2');
+    lockLed.setAttribute('fill','#e3564f');
+    svg.appendChild(lockLed);
+
+    // taped sticky note, top of the door
+    const noteP = proj(gx+LW*0.28, gy+0.01, LH-0.32);
+    const note = document.createElementNS(NS,'g');
+    note.setAttribute('transform', `rotate(${noteTilts[i]} ${noteP.x} ${noteP.y})`);
+    const noteRect = document.createElementNS(NS,'rect');
+    noteRect.setAttribute('x', noteP.x-8); noteRect.setAttribute('y', noteP.y-6);
+    noteRect.setAttribute('width','16'); noteRect.setAttribute('height','12');
+    noteRect.setAttribute('fill', noteColors[i]);
+    noteRect.setAttribute('stroke','#d8c467'); noteRect.setAttribute('stroke-width','0.6');
+    note.appendChild(noteRect);
+    for(let l=0;l<2;l++){
+      const ln = document.createElementNS(NS,'line');
+      ln.setAttribute('x1', noteP.x-5.5); ln.setAttribute('y1', noteP.y-2.5+l*4);
+      ln.setAttribute('x2', noteP.x + (l===0?5.5:2.5)); ln.setAttribute('y2', noteP.y-2.5+l*4);
+      ln.setAttribute('stroke','#8a7a3f'); ln.setAttribute('stroke-width','0.8'); ln.setAttribute('stroke-linecap','round');
+      note.appendChild(ln);
+    }
+    svg.appendChild(note);
+
+    // round sticker badge, lower part of the door — a simple vector icon, not text
+    const stickerP = proj(gx+LW*0.28, gy+0.01, LH-1.15);
+    const stk = document.createElementNS(NS,'circle');
+    stk.setAttribute('cx', stickerP.x); stk.setAttribute('cy', stickerP.y); stk.setAttribute('r','6');
+    stk.setAttribute('fill', stickerColors[i]);
+    svg.appendChild(stk);
+    const icon = document.createElementNS(NS,'path');
+    const glyphs = [
+      `M ${stickerP.x-1.7} ${stickerP.y-3.4} L ${stickerP.x+1.3} ${stickerP.y-0.4} L ${stickerP.x-0.4} ${stickerP.y-0.4} L ${stickerP.x+1.7} ${stickerP.y+3.4} L ${stickerP.x-1.3} ${stickerP.y+0.4} L ${stickerP.x+0.4} ${stickerP.y+0.4} Z`,
+      `M ${stickerP.x-2.6} ${stickerP.y} L ${stickerP.x+2.6} ${stickerP.y} M ${stickerP.x} ${stickerP.y-2.6} L ${stickerP.x} ${stickerP.y+2.6}`,
+      `M ${stickerP.x-2.6} ${stickerP.y-2.6} L ${stickerP.x+2.6} ${stickerP.y+2.6} M ${stickerP.x+2.6} ${stickerP.y-2.6} L ${stickerP.x-2.6} ${stickerP.y+2.6}`,
+      `M ${stickerP.x} ${stickerP.y-3.4} L ${stickerP.x+1} ${stickerP.y-1} L ${stickerP.x+3.4} ${stickerP.y-0.8} L ${stickerP.x+1.5} ${stickerP.y+0.7} L ${stickerP.x+2.2} ${stickerP.y+3.2} L ${stickerP.x} ${stickerP.y+1.7} L ${stickerP.x-2.2} ${stickerP.y+3.2} L ${stickerP.x-1.5} ${stickerP.y+0.7} L ${stickerP.x-3.4} ${stickerP.y-0.8} L ${stickerP.x-1} ${stickerP.y-1} Z`
+    ];
+    icon.setAttribute('d', glyphs[i]);
+    icon.setAttribute('fill', i===3 ? '#fff' : 'none');
+    icon.setAttribute('stroke', '#fff');
+    icon.setAttribute('stroke-width','1');
+    icon.setAttribute('stroke-linecap','round');
+    icon.setAttribute('stroke-linejoin','round');
+    svg.appendChild(icon);
+  }
+
+  /* ---- bench, pulled out in front, spanning across the whole row ---- */
+  const runLen = 4*LD + 3*GAP;                 // total wall-length the four lockers occupy
+  const BX = LX+LW+0.2, BY = startGy-0.05, BW = 0.45, BD = runLen+0.1, seatZ = 0.22, seatH = 0.12;
+  cube(BX+0.04, BY+0.05, 0.1, 0.1, seatZ, 0, '#4a3c2c');            // near leg
+  cube(BX+BW-0.14, BY+BD-0.15, 0.1, 0.1, seatZ, 0, '#4a3c2c');      // far leg
+  cube(BX, BY, BW, BD, seatH, seatZ, '#8a6d4f');                     // seat
+  line(proj(BX+0.04, BY, seatZ+seatH+0.005), proj(BX+0.04, BY+BD, seatZ+seatH+0.005), 'rgba(43,42,40,.15)', 1.2);
+}
+drawLockers();
+// ASIC & FPGA lab (experience) — desk + scope with a live scrolling trace + warm desk lamp
+props.push({key:'experience', label:'ASIC & FPGA Lab', color:'#3f6b8a', dot:'#7cc7e0',
+  draw:()=>{
+    cube(3.6,0.7,1.7,1.0,0.85,0,'#3f6b8a');
+    cube(3.75,0.85,0.5,0.15,0.55,0.85,'#20242b'); // scope housing
+    const scr = cube(3.8,0.87,0.4,0.02,0.4,0.93,'#12261f'); // screen
+    const a = document.createElementNS(NS,'path');
+    a.setAttribute('d', `M ${scr.x-16} ${scr.y+4} l 5 -10 l 5 12 l 5 -16 l 5 14 l 6 -6`);
+    a.setAttribute('fill','none'); a.setAttribute('stroke','#6fe08a'); a.setAttribute('stroke-width','1.6');
+    a.setAttribute('stroke-dasharray','5 3'); a.setAttribute('class','scope-trace');
+    svg.appendChild(a);
+    // desk lamp with warm glow
+    const lampBase = proj(4.95,0.78,0.85);
+    const glow = document.createElementNS(NS,'circle');
+    glow.setAttribute('cx',lampBase.x); glow.setAttribute('cy',lampBase.y-30); glow.setAttribute('r','60');
+    glow.setAttribute('fill','url(#lampGlow)');
+    svg.appendChild(glow);
+    line(proj(4.95,0.78,0.85), proj(4.95,0.78,1.15), '#2b2a28', 3);
+    line(proj(4.95,0.78,1.15), proj(4.75,0.78,1.3), '#2b2a28', 3);
+    const bulb = document.createElementNS(NS,'circle');
+    bulb.setAttribute('cx',lampBase.x-16); bulb.setAttribute('cy',lampBase.y-52); bulb.setAttribute('r','9');
+    bulb.setAttribute('fill','url(#lampCore)'); bulb.setAttribute('class','lamp-flicker');
+    svg.appendChild(bulb);
+    return cube(3.9,0.9,0.2,0.05,0.02,1.35,'#7cc7e0');
+  }});
+// Battery Management System bench — PSU, LED, center PCB with chips, soldering station, wire spools
+props.push({key:'proj-bms', label:'Battery Management System', color:'#8a5a44', dot:'#b5533f',
+  draw:()=>{
+    cube(6.2,0.7,1.8,1.0,0.85,0,'#8a5a44');
+    cube(6.4,0.82,0.55,0.35,0.3,0.85,'#2b2a28'); // PSU body
+    const c1 = proj(6.55,0.92,1.02);
+    const dial1 = document.createElementNS(NS,'circle');
+    dial1.setAttribute('cx',c1.x); dial1.setAttribute('cy',c1.y); dial1.setAttribute('r','4'); dial1.setAttribute('fill','#c98a4b');
+    svg.appendChild(dial1);
+    const c2 = proj(6.8,0.85,1.05);
+    const led = document.createElementNS(NS,'circle');
+    led.setAttribute('cx',c2.x); led.setAttribute('cy',c2.y); led.setAttribute('r','2.6');
+    led.setAttribute('fill','#6fe08a'); led.setAttribute('class','blink-led');
+    svg.appendChild(led);
+    // center PCB with tiny chips
+    const pcb = cube(7.05,1.15,0.5,0.32,0.03,0.85,'#2f7a4a');
+    ['-0.12,-0.06,0.09,0.06','0.06,-0.05,0.07,0.05','-0.02,0.03,0.1,0.05'].forEach(spec=>{
+      const [dx,dy,w,h] = spec.split(',').map(Number);
+      const chipTop = proj(7.05+0.25+dx, 1.15+0.16+dy, 0.885);
+      const chip = document.createElementNS(NS,'rect');
+      chip.setAttribute('x', chipTop.x-w*40); chip.setAttribute('y', chipTop.y-h*40);
+      chip.setAttribute('width', w*80); chip.setAttribute('height', h*40);
+      chip.setAttribute('fill', '#1c1f26'); chip.setAttribute('rx','1');
+      svg.appendChild(chip);
+    });
+    // small robotic arm chassis beside the PCB
+    const armBase = proj(6.35,1.35,0.86);
+    const baseC = document.createElementNS(NS,'circle');
+    baseC.setAttribute('cx',armBase.x); baseC.setAttribute('cy',armBase.y); baseC.setAttribute('r','7'); baseC.setAttribute('fill','#c9c2b0');
+    svg.appendChild(baseC);
+    const seg1end = {x:armBase.x-4, y:armBase.y-22};
+    line(armBase, seg1end, '#9a9385', 4);
+    const seg2end = {x:seg1end.x+18, y:seg1end.y-10};
+    line(seg1end, seg2end, '#9a9385', 4);
+    const grip = document.createElementNS(NS,'circle');
+    grip.setAttribute('cx',seg2end.x); grip.setAttribute('cy',seg2end.y); grip.setAttribute('r','3.4'); grip.setAttribute('fill','#b5533f');
+    svg.appendChild(grip);
+    // soldering iron with glowing tip + drifting smoke
+    const ironBase = proj(6.35,1.55,0.86);
+    line(ironBase, {x:ironBase.x+20,y:ironBase.y-8}, '#40403f', 3.5);
+    const tip = document.createElementNS(NS,'circle');
+    tip.setAttribute('cx', ironBase.x+22); tip.setAttribute('cy', ironBase.y-9); tip.setAttribute('r','3');
+    tip.setAttribute('fill','#ff8a4c');
+    svg.appendChild(tip);
+    for(let s=0;s<3;s++){
+      const smoke = document.createElementNS(NS,'ellipse');
+      smoke.setAttribute('cx', ironBase.x+22); smoke.setAttribute('cy', ironBase.y-16);
+      smoke.setAttribute('rx','3'); smoke.setAttribute('ry','5');
+      smoke.setAttribute('fill','#cfcabf'); smoke.setAttribute('class','smoke');
+      smoke.style.animationDelay = (s*1.05)+'s';
+      svg.appendChild(smoke);
+    }
+    // solder spool
+    const spoolC = proj(6.25,1.7,0.86);
+    const spoolOuter = document.createElementNS(NS,'circle');
+    spoolOuter.setAttribute('cx',spoolC.x); spoolOuter.setAttribute('cy',spoolC.y); spoolOuter.setAttribute('r','6');
+    spoolOuter.setAttribute('fill','#d8d2c4');
+    const spoolInner = document.createElementNS(NS,'circle');
+    spoolInner.setAttribute('cx',spoolC.x); spoolInner.setAttribute('cy',spoolC.y); spoolInner.setAttribute('r','2.4');
+    spoolInner.setAttribute('fill','#8a5a44');
+    svg.appendChild(spoolOuter); svg.appendChild(spoolInner);
+    // colorful jumper-wire spools
+    ['#e3564f','#e8c565','#5fa8e3','#5f7a52'].forEach((col,i)=>{
+      const sc = proj(7.65+i*0.12, 0.78, 0.86);
+      const wc = document.createElementNS(NS,'circle');
+      wc.setAttribute('cx',sc.x); wc.setAttribute('cy',sc.y); wc.setAttribute('r','4.2'); wc.setAttribute('fill',col);
+      svg.appendChild(wc);
+    });
+    return cube(6.55,0.95,0.1,0.1,0.18,0.91,'#b5533f');
+  }});
+// RISC-V Core station — dual monitors: SystemVerilog code on one, a schematic on the other
+props.push({key:'proj-riscv', label:'RISC-V Core', color:'#405a52', dot:'#5f7a52',
+  draw:()=>{
+    const base = cube(8.5,1.15,1.1,0.7,0.82,0,'#405a52');
+    function monitor(gx,gy,tilt){
+      const bez = cube(gx,gy,0.55,0.06,0.42,0.82,'#20242b');
+      return bez;
+    }
+    const m1 = monitor(8.55,1.2);
+    const m2 = monitor(9.15,1.28);
+    // code lines on monitor 1
+    const codeColors = ['#7cc7e0','#e8c565','#e3564f','#8fb894','#7cc7e0','#e8c565'];
+    codeColors.forEach((c,i)=>{
+      const y0 = m1.y - 14 + i*4.4;
+      const w = 10 + (i%3)*8;
+      const seg = document.createElementNS(NS,'line');
+      seg.setAttribute('x1', m1.x-16); seg.setAttribute('y1', y0);
+      seg.setAttribute('x2', m1.x-16+w); seg.setAttribute('y2', y0);
+      seg.setAttribute('stroke', c); seg.setAttribute('stroke-width','1.6'); seg.setAttribute('stroke-linecap','round');
+      svg.appendChild(seg);
+    });
+    // schematic lines on monitor 2
+    const sch = document.createElementNS(NS,'g');
+    sch.setAttribute('stroke', '#c9c2b0'); sch.setAttribute('stroke-width','1.3'); sch.setAttribute('fill','none');
+    sch.innerHTML = `
+      <rect x="${m2.x-14}" y="${m2.y-14}" width="10" height="8"/>
+      <line x1="${m2.x-4}" y1="${m2.y-10}" x2="${m2.x+8}" y2="${m2.y-10}"/>
+      <rect x="${m2.x+8}" y="${m2.y-14}" width="8" height="8"/>
+      <line x1="${m2.x-9}" y1="${m2.y-6}" x2="${m2.x-9}" y2="${m2.y+2}"/>
+      <line x1="${m2.x-9}" y1="${m2.y+2}" x2="${m2.x+12}" y2="${m2.y+2}"/>
+    `;
+    svg.appendChild(sch);
+    return base;
+  }});
+// Computer Vision Rig (fall-detection project) — Raspberry Pi + Arduino wired into a breadboard
+props.push({key:'proj-fall', label:'Computer Vision Rig', color:'#c98a4b', dot:'#c98a4b',
+  draw:()=>{
+    const crate = cube(1.0,3.6,1.2,1.0,0.7,0,'#c98a4b');
+    // breadboard
+    const bb = cube(1.15,3.7,0.55,0.32,0.03,0.7,'#e7e0d0');
+    for(let i=0;i<4;i++){
+      const dot = document.createElementNS(NS,'circle');
+      const dp = proj(1.15+0.1+i*0.1, 3.7+0.16, 0.735);
+      dot.setAttribute('cx',dp.x); dot.setAttribute('cy',dp.y); dot.setAttribute('r','1.6');
+      dot.setAttribute('fill', ['#e3564f','#5fa8e3','#e8c565','#5f7a52'][i]);
+      svg.appendChild(dot);
+    }
+    // Raspberry Pi + Arduino boards
+    const rpi = cube(1.75,3.65,0.28,0.22,0.03,0.7,'#5f7a52');
+    const ard = cube(1.75,3.95,0.24,0.18,0.03,0.7,'#3f6b8a');
+    // camera on the little robot chassis
+    return cube(1.4,3.9,0.35,0.35,0.35,0.7,'#2b2a28');
+  }});
+// tool pegboard (skills) — hand tools + pegboard holes
+props.push({key:'skills', label:'Hardware Testing', color:'#6d5a8a', dot:'#6d5a8a',
+  draw:()=>{
+    const top = cube(4.0,3.55,2.2,0.5,1.7,0,'#6d5a8a');
+    for(let i=0;i<10;i++){
+      const hp = proj(4.2+i*0.2, 3.6, 0.4+ (i%2)*0.6);
+      const hole = document.createElementNS(NS,'circle');
+      hole.setAttribute('cx',hp.x); hole.setAttribute('cy',hp.y); hole.setAttribute('r','1.6');
+      hole.setAttribute('fill', 'rgba(0,0,0,.25)');
+      svg.appendChild(hole);
+    }
+    // pliers (crossed lines + loop handles)
+    const pc = proj(4.5,3.6,1.5);
+    line({x:pc.x-8,y:pc.y-8},{x:pc.x+8,y:pc.y+8}, '#e7e0d0', 2.4);
+    line({x:pc.x+8,y:pc.y-8},{x:pc.x-8,y:pc.y+8}, '#e7e0d0', 2.4);
+    // wire stripper (small notched rect)
+    const wsC = proj(5.1,3.6,1.5);
+    const wsBody = document.createElementNS(NS,'rect');
+    wsBody.setAttribute('x', wsC.x-9); wsBody.setAttribute('y', wsC.y-4);
+    wsBody.setAttribute('width','18'); wsBody.setAttribute('height','8'); wsBody.setAttribute('rx','2');
+    wsBody.setAttribute('fill','#e8c565');
+    svg.appendChild(wsBody);
+    // screwdriver
+    const sdC = proj(5.7,3.6,1.5);
+    line({x:sdC.x-10,y:sdC.y},{x:sdC.x+4,y:sdC.y}, '#c9c2b0', 2.6);
+    line({x:sdC.x+4,y:sdC.y},{x:sdC.x+12,y:sdC.y}, '#e8c565', 4);
+    return top;
+  }});
+// front desk (contact)
+props.push({key:'contact', label:'Comms Desk', color:'#b5533f', dot:'#b5533f',
+  draw:()=>{
+    cube(7.4,3.9,1.6,1.0,0.85,0,'#b5533f');
+    return cube(7.6,4.05,0.3,0.2,0.15,0.85,'#f4efe2');
+  }});
+// decorative plant (non-interactive, no bbox tracking needed)
+cube(9.2,5.1,0.5,0.5,0.9,0,'#5f7a52');
+
+props.forEach(p=>{
+  curBBox = { minX:Infinity, minY:Infinity, maxX:-Infinity, maxY:-Infinity };
+  const top = p.draw();
+  const bbox = curBBox;
+  curBBox = null;
+  hotspot(top, p.key, p.label, p.dot, bbox);
+});
+
+/* ===================== parallax tilt ===================== */
+const wrap = document.getElementById('scene-wrap');
+const stage = document.getElementById('stage');
+stage.addEventListener('mousemove', (e)=>{
+  const r = stage.getBoundingClientRect();
+  const px = (e.clientX - r.left)/r.width - 0.5;
+  const py = (e.clientY - r.top)/r.height - 0.5;
+  wrap.style.transform = `scale(1) rotateX(${py*-6}deg) rotateY(${px*8}deg)`;
+});
+stage.addEventListener('mouseleave', ()=>{ wrap.style.transform = ''; });
+
+/* ===================== modal content ===================== */
+const CONTENT = {
+  education: {
+    eyebrow:'01 — EDUCATION', title:'Blueprints & Coursework',
+    sub:'San Jose State University · B.S. Electrical Engineering · Dec 2027',
+    body:`
+      <h4>Relevant Coursework</h4>
+      <div class="m-sub" style="margin-bottom:6px;">Microprocessors &amp; Hardware Design</div>
+      <div class="chip-row" style="margin-bottom:12px;">
+        <span class="skill-chip">EE 120 — Microprocessor Based System Design</span>
+        <span class="skill-chip">EE 118 — Digital Logic Circuit Design</span>
+        <span class="skill-chip">EE 97/98 — Intro EE Laboratory</span>
+      </div>
+      <div class="m-sub" style="margin-bottom:6px;">Signals &amp; Systems</div>
+      <div class="chip-row" style="margin-bottom:12px;">
+        <span class="skill-chip">EE 110 — Circuits and Systems</span>
+        <span class="skill-chip">EE 112 — Intro to Signal Processing</span>
+        <span class="skill-chip">EE 132 — Theory of Automatic Controls</span>
+      </div>
+      <div class="m-sub" style="margin-bottom:6px;">Electronics</div>
+      <div class="chip-row" style="margin-bottom:16px;">
+        <span class="skill-chip">EE 122 — Electronic Design I</span>
+        <span class="skill-chip">EE 128 — Physical Electronics</span>
+      </div>
+      <h4>IEEE Student Chapter — SJSU</h4>
+      <div class="m-sub" style="margin-bottom:8px;">Digital &amp; Analog Team Officer</div>
+      <ul>
+        <li>Led technical workshops on PCB layout and fabrication, mentoring students through custom buck converters and EMG circuits.</li>
+        <li>Architecting custom RISC-V processors for the Fall 2026 CPU development series.</li>
+      </ul>
+      <h4>Circuit Design Initiative</h4>
+      <div class="m-sub" style="margin-bottom:8px;">Director &amp; Hardware Instructor</div>
+      <ul>
+        <li>Directing full-lifecycle development of Arduino robotics and instructing peers on analog design principles.</li>
+        <li>Translating personal BMS prototype insights into student-facing lab testing frameworks.</li>
+        <li>Launching an FPGA-based 3D graphics accelerator using Verilog and AXI4-Lite register mapping.</li>
+      </ul>`
+  },
+  experience: {
+    eyebrow:'02 — EXPERIENCE', title:'Research Bench',
+    sub:'Research Assistant · San Jose State University · Jun–Aug 2025',
+    body:`<ul>
+        <li>Developed a logic-based binary classifier in Verilog for implementation on a custom Tiny Tapeout ASIC chip.</li>
+        <li>Designed a VGA output interface in Verilog using RGB color encoding and VGA timing signals (HSYNC/VSYNC) to display real-time system states from digital switch inputs.</li>
+      </ul>`
+  },
+  'proj-bms': {
+    eyebrow:'PROJECT', title:'ChargeSense Battery Management System',
+    sub:'July 2026 — Present <span class="m-badge">Current</span>',
+    body:`<ul>
+        <li>Edge-driven BMS with an embedded microprocessor tracking real-time cell parameters.</li>
+        <li>Low-noise, 4-layer PCB in KiCad, isolating high-current charging paths from sensitive ADC lines to mitigate EMI.</li>
+        <li>Real-time Python serial logging engine capturing current/voltage telemetry and running parametric estimation models.</li>
+      </ul>`
+  },
+  'proj-riscv': {
+    eyebrow:'PROJECT', title:'Thermal-Aware RISC-V Pipeline Core',
+    sub:'May 2026 — Present <span class="m-badge">Current</span>',
+    body:`<ul>
+        <li>Open-source, multi-stage RISC-V microprocessor in SystemVerilog with active hardware monitoring modules.</li>
+        <li>Inline digital counters within the execution pipeline track instruction-stream weights and localized switching-noise hot spots.</li>
+        <li>Hardware-level feedback loop dynamically regulates processor clock states to mitigate thermal degradation.</li>
+      </ul>`
+  },
+  'proj-fall': {
+    eyebrow:'PROJECT', title:'Embedded AI Smart Fall Detection',
+    sub:'Python &amp; Raspberry Pi · April 2025 — August 2025',
+    body:`<ul>
+        <li>Real-time computer vision on Raspberry Pi with OpenCV for high-accuracy edge object detection.</li>
+        <li>Custom fall-detection algorithm cut false positives by 40% using dynamic aspect-ratio analysis and a 10-frame consecutive detection threshold.</li>
+        <li>RPi.GPIO hardware control loops drive LED/buzzer outputs with under 2 seconds of latency.</li>
+      </ul>`
+  },
+  skills: {
+    eyebrow:'04 — SKILLS', title:'Tool Pegboard', sub:'Everything on the bench, grouped by function.',
+    body:`
+      <h4>Design &amp; Simulation</h4>
+      <div class="chip-row">
+        <span class="skill-chip">PCB Design</span><span class="skill-chip">KiCad</span>
+        <span class="skill-chip">LTspice</span><span class="skill-chip">Multisim</span>
+        <span class="skill-chip">Circuit Analysis</span>
+      </div>
+      <h4>Test &amp; Measurement</h4>
+      <div class="chip-row">
+        <span class="skill-chip">Oscilloscope</span><span class="skill-chip">Signal Generator</span>
+        <span class="skill-chip">Soldering</span>
+      </div>
+      <h4>Embedded &amp; Digital</h4>
+      <div class="chip-row">
+        <span class="skill-chip">RTL Design</span><span class="skill-chip">Verilog</span>
+        <span class="skill-chip">SystemVerilog</span><span class="skill-chip">Verilator</span>
+        <span class="skill-chip">FPGA/ASIC</span><span class="skill-chip">Microcontrollers</span>
+        <span class="skill-chip">Raspberry Pi</span><span class="skill-chip">Arduino</span>
+        <span class="skill-chip">GPIO</span><span class="skill-chip">UART</span>
+        <span class="skill-chip">SPI</span><span class="skill-chip">I2C</span>
+        <span class="skill-chip">CAN Bus</span>
+      </div>
+      <h4>Software &amp; Tooling</h4>
+      <div class="chip-row">
+        <span class="skill-chip">Python</span><span class="skill-chip">C</span>
+        <span class="skill-chip">C++</span><span class="skill-chip">MATLAB</span>
+        <span class="skill-chip">NumPy</span><span class="skill-chip">Matplotlib</span>
+        <span class="skill-chip">Git</span><span class="skill-chip">Linux</span>
+      </div>`
+  },
+  hobbies: {
+    eyebrow:'PINNED TO THE CORKBOARD', title:'Off the Clock', sub:"What's happening when the soldering iron is finally off.",
+    body:`
+      <h4 style="font-size:26px; margin-bottom:2px;">🥾 Hiking</h4>
+      <div class="m-sub" style="margin-bottom:8px;">Weekend firmware for the legs</div>
+      <ul>
+        <li>Out on Bay Area trails most weekends — turns out elevation gain is a great substitute for caffeine when you're stuck on a bug.</li>
+        <li>Best ideas for a stubborn circuit almost always show up somewhere around mile three, never at the bench.</li>
+      </ul>
+      <h4 style="font-size:26px; margin-bottom:2px;">⚽ Soccer</h4>
+      <div class="m-sub" style="margin-bottom:8px;">Weekly pickup game</div>
+      <ul>
+        <li>Play pickup soccer with friends — the one place all week where the only feedback loop is a ball, not a scope trace.</li>
+      </ul>
+      <h4 style="font-size:26px; margin-bottom:2px;">🏋️ Gym</h4>
+      <div class="m-sub" style="margin-bottom:8px;">A few sessions a week</div>
+      <ul>
+        <li>Lifting a few times a week to counterbalance hours hunched over a breadboard — good for the back, better for the head.</li>
+      </ul>
+      <div class="chip-row" style="margin-top:6px;">
+        <span class="skill-chip">🌄 Trail regular</span>
+        <span class="skill-chip">🥅 Weekend striker</span>
+        <span class="skill-chip">🏋️ Gym rat</span>
+      </div>`
+  },
+  contact: {
+    eyebrow:'05 — CONTACT', title:'Front Desk', sub:"A serial console, just like the one on the BMS. Type 'help'.",
+    body:`
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i></div>
+        <div id="term-log"><div class="line out">Serial link established with UMAR-EE-BOARD.
+Type 'help' for a list of commands.</div></div>
+        <div class="term-input-row">
+          <span class="prompt">guest@umar-ee:~$</span>
+          <input id="term-input" type="text" autocomplete="off" spellcheck="false" aria-label="terminal command input">
+        </div>
+      </div>
+      <div class="contact-hints">
+        <button data-cmd="email">email</button>
+        <button data-cmd="phone">phone</button>
+        <button data-cmd="linkedin">linkedin</button>
+        <button data-cmd="resume">resume</button>
+      </div>`
+  }
+};
+
+const scrim = document.getElementById('scrim');
+const modal = document.getElementById('modal');
+const mEyebrow = document.getElementById('m-eyebrow');
+const mTitle = document.getElementById('m-title');
+const mSub = document.getElementById('m-sub');
+const mBody = document.getElementById('m-body');
+
+function openModal(key){
+  const c = CONTENT[key];
+  if(!c) return;
+  mEyebrow.textContent = c.eyebrow;
+  mTitle.textContent = c.title;
+  mSub.innerHTML = c.sub;
+  mBody.innerHTML = c.body;
+  scrim.classList.add('open');
+  modal.classList.add('open');
+  if(key === 'contact') setupTerminal();
+}
+function closeModal(){
+  scrim.classList.remove('open');
+  modal.classList.remove('open');
+}
+scrim.addEventListener('click', closeModal);
+document.getElementById('m-close').addEventListener('click', closeModal);
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+
+document.getElementById('resume-link').href = RESUME_DATA_URI;
+document.querySelectorAll('#nav-card [data-action]').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    const action = el.dataset.action;
+    if(action==='home') closeModal();
+    if(action==='open') openModal(el.dataset.key);
+  });
+});
+
+/* ---------- terminal (built fresh each time contact modal opens) ---------- */
+const CONTACT_INFO = {
+  email: 'umar.ahamed@sjsu.edu',
+  phone: '(510) 396-6855',
+  linkedin: 'https://www.linkedin.com/in/umar-ahamed-a94382259/',
+  resume: RESUME_DATA_URI
+};
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function setupTerminal(){
+  const log = document.getElementById('term-log');
+  const input = document.getElementById('term-input');
+  function printLine(html, cls){
+    const div = document.createElement('div');
+    div.className = 'line ' + (cls||'out');
+    div.innerHTML = html;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+  function run(raw){
+    const cmd = raw.trim().toLowerCase();
+    printLine(escapeHtml(raw), 'cmd');
+    switch(cmd){
+      case '': break;
+      case 'help': printLine('Available: help, whoami, email, phone, linkedin, resume, clear'); break;
+      case 'whoami': printLine('Umar Ahamed — Electrical Engineering, San Jose State University.'); break;
+      case 'email':
+        printLine(`Opening mail client → <a href="mailto:${CONTACT_INFO.email}">${CONTACT_INFO.email}</a>`);
+        window.location.href = 'mailto:' + CONTACT_INFO.email; break;
+      case 'phone':
+        printLine(`Dialing → <a href="tel:${CONTACT_INFO.phone.replace(/[^\d+]/g,'')}">${CONTACT_INFO.phone}</a>`);
+        window.location.href = 'tel:' + CONTACT_INFO.phone.replace(/[^\d+]/g,''); break;
+      case 'linkedin':
+        printLine(`Opening LinkedIn → <a href="${CONTACT_INFO.linkedin}" target="_blank" rel="noopener">${CONTACT_INFO.linkedin}</a>`);
+        window.open(CONTACT_INFO.linkedin, '_blank'); break;
+      case 'resume':
+        printLine(`Fetching résumé → <a href="${CONTACT_INFO.resume}" target="_blank" rel="noopener">${CONTACT_INFO.resume}</a>`);
+        window.open(CONTACT_INFO.resume, '_blank'); break;
+      case 'clear': log.innerHTML = ''; break;
+      default: printLine(`command not found: ${escapeHtml(cmd)} — type 'help'`);
+    }
+  }
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ run(input.value); input.value = ''; }
+  });
+  document.querySelectorAll('.contact-hints button').forEach(btn=>{
+    btn.addEventListener('click', ()=> run(btn.dataset.cmd));
+  });
+  input.focus();
+}
+</script>
+</body>
+</html>
